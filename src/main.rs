@@ -84,7 +84,7 @@ impl Qtree{
 			}
 		}
 	}
-	fn querry(&self, elem: Dot) {
+	fn querry(&self, elem: &Dot) {
 		match self.content {
 			Contents::Children(C) => {
 				let hmiddle = (self.y1 + self.y2)/2;
@@ -115,5 +115,5 @@ impl Qtree{
 
 fn main() {
 	let mut tree = Qtree::new(0,0,600,400);
-	tree.querry(Dot{x:5,y:5});
+	tree.querry(&Dot{x:5,y:5});
 }
