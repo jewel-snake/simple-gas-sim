@@ -1,120 +1,96 @@
-use std::vec::Vec;
-use std::cell::RefCell;
+use gas_sim::logic::{Qtree,Dot};
+extern crate glutin_window;
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate piston;
 
-struct Dot{
-	x: u16,
-	y: u16,
+use glutin_window::GlutinWindow as Window;
+use opengl_graphics::{GlGraphics, OpenGL};
+use piston::event_loop::{EventSettings, Events};
+use piston::input::{RenderArgs, RenderEvent, UpdateArgs, UpdateEvent};
+use piston::window::WindowSettings;
+
+struct App{
+	gl: GlGraphics,
 }
 
-impl Copy for Dot {}
-
-impl Clone for Dot {
-	fn clone(&self) -> Dot{
-		*self
-	}
-}
-
-struct Qtree{
-	x1: u16,
-	x2: u16,
-	y1: u16,
-	y2: u16,
-	content: Contents,
-}
-
-enum Contents{
-	Children([Box<RefCell<Qtree>>; 4]),
-	Elements(RefCell<Vec<Dot>>),
-}
-
-impl Contents{
-	fn unwrap_children(&self) -> &[Box<RefCell<Qtree>>; 4] {
-		match self {
-			Contents::Children(a) => &a,
-			Contents::Elements(_) => panic!("cannot unwarp Children node!"),
-		}
-	}
-	fn unwrap_elements(&self) -> &RefCell<Vec<Dot>> {
-		match self {
-			Contents::Children(_) => panic!("cannot unwrap Elements vector!"),
-			Contents::Elements(v) => &v,
-		}
-	} 
-}
-
-impl Qtree{
-	fn new(x1: u16, y1: u16, x2: u16, y2: u16) -> Qtree{
-		Qtree{
-			x1,
-			x2,
-			y1,
-			y2,
-			content: Contents::Elements(RefCell::new(Vec::new())),
-		}
-	}
-	fn overflowed(&self) -> bool{
-		let mut a = false;
-		if self.content.unwrap_elements().borrow().len() > 5 {
-			a = !a;
-		}
-		a
-	}
-
-	fn handle_overflow(&mut self) {
-		let a = self.content.unwrap_elements().clone();
-		let hmiddle = (self.y1 + self.y2)/2;
-		let wmiddle = (self.x1 + self.x2)/2;
-		self.content = Contents::Children([
-			Box::new(RefCell::new(Qtree::new(wmiddle,self.y1,self.x2,hmiddle))),
-			Box::new(RefCell::new(Qtree::new(self.x1,self.y1,wmiddle,hmiddle))),
-			Box::new(RefCell::new(Qtree::new(self.x1,hmiddle,wmiddle,self.y2))),
-			Box::new(RefCell::new(Qtree::new(wmiddle,hmiddle,self.x2,self.y2)))]);
-		for k in &*a.borrow() {
-			if k.x > wmiddle {
-				if k.x > hmiddle{
-					self.content.unwrap_children()[3].borrow_mut().querry(&k);
-				}else{
-					self.content.unwrap_children()[0].borrow_mut().querry(&k);
-				}
-			}else{
-				if k.x > hmiddle{
-					self.content.unwrap_children()[2].borrow_mut().querry(&k);
-				}else{
-					self.content.unwrap_children()[1].borrow_mut().querry(&k);
-				}
+impl App{
+	fn render(&mut self,args: &RenderArgs,t: &Qtree){
+		use graphics::*;
+		const BLACK: [f32;4] = [0.0,0.0,0.0,1.0];
+		const WHITE: [f32;4] = [1.0,1.0,1.0,1.0];
+		const RED: [f32;4] = [1.0,0.0,0.0,1.0];
+		//let (x,y) = (args.window_size[0]/2.0,args.window_size[1]/2.0);
+		self.gl.draw(args.viewport(), |c,gl| {
+			clear(BLACK,gl);
+			for i in &t.graphics.dots {
+				let crl = rectangle::square(i[0],i[1],3.0);
+				ellipse(RED,crl,c.transform,gl);
 			}
-		}
+			let s = &t;
+			while let gas_sim::Contents::Children(c) = s.content {
+				
+			}
+		});
 	}
-	fn querry(&mut self, elem: &Dot) {
-		match &self.content {
-			Contents::Children(c) => {
-				let hmiddle = (self.y1 + self.y2)/2;
-				let wmiddle = (self.x1 + self.x2)/2;
-				if elem.x > wmiddle {
-					if elem.y > hmiddle {
-						c[3].borrow_mut().querry(elem);
-					}else{
-						c[0].borrow_mut().querry(elem);
-					}
-				}else{
-					if elem.y > hmiddle {
-						c[2].borrow_mut().querry(elem);
-					}else{
-						c[1].borrow_mut().querry(elem);
-					}
-				}
-			},
-			Contents::Elements(e) => {
-				e.borrow_mut().push(*elem);
-				if self.overflowed() {
-					self.handle_overflow();
-				}
-			},
-		}
-	}
+	fn update(&mut self,args: &UpdateArgs,t: Qtree){}
 }
 
 fn main() {
-	let mut tree = Qtree::new(0,0,600,400);
-	tree.querry(&Dot{x:5,y:5});
+	let opengl = OpenGL::V3_2;
+	let mut window: Window = WindowSettings::new("Quad Tree", [600, 400])
+	.graphics_api(opengl)
+  .exit_on_esc(true)
+  .build()
+  .unwrap();
+  let mut app = App {
+    gl: GlGraphics::new(opengl),
+  };
+  let mut tree = Qtree::new(0.0,0.0,600.0,400.0);
+	tree.querry(&mut Dot{x:5_f64,y:5_f64});
+	tree.graphics.dots.push([5.0,5.0]);
+	tree.querry(&mut Dot{x:100_f64,y:200_f64});
+	tree.graphics.dots.push([100.0,200.0]);
+	tree.querry(&mut Dot{x:300_f64,y:200_f64});
+	tree.graphics.dots.push([300.0,200.0]);
+	tree.querry(&mut Dot{x:400_f64,y:300_f64});
+	tree.graphics.dots.push([400.0,300.0]);
+	tree.querry(&mut Dot{x:500_f64,y:350_f64});
+	tree.graphics.dots.push([500.0,350.0]);
+	tree.querry(&mut Dot{x:250_f64,y:100_f64});
+	tree.graphics.dots.push([250.0,100.0]);
+	tree.querry(&mut Dot{x:50_f64,y:50_f64});
+	tree.graphics.dots.push([50.0,50.0]);
+	tree.querry(&mut Dot{x:140_f64,y:220_f64});
+	tree.graphics.dots.push([140.0,220.0]);
+	tree.querry(&mut Dot{x:310_f64,y:201_f64});
+	tree.graphics.dots.push([310.0,201.0]);
+	tree.querry(&mut Dot{x:460_f64,y:370_f64});
+	tree.graphics.dots.push([460.0,370.0]);
+	tree.querry(&mut Dot{x:540_f64,y:350_f64});
+	tree.graphics.dots.push([540.0,350.0]);
+	tree.querry(&mut Dot{x:259_f64,y:190_f64});
+	tree.graphics.dots.push([259.0,190.0]);
+	tree.querry(&mut Dot{x:90_f64,y:90_f64});
+	tree.graphics.dots.push([90.0,90.0]);
+	tree.querry(&mut Dot{x:160_f64,y:230_f64});
+	tree.graphics.dots.push([160.0,230.0]);
+	tree.querry(&mut Dot{x:310_f64,y:230_f64});
+	tree.graphics.dots.push([310.0,230.0]);
+	tree.querry(&mut Dot{x:460_f64,y:330_f64});
+	tree.graphics.dots.push([460.0,330.0]);
+	tree.querry(&mut Dot{x:540_f64,y:340_f64});
+	tree.graphics.dots.push([540.0,340.0]);
+	tree.querry(&mut Dot{x:256_f64,y:140_f64});
+	tree.graphics.dots.push([256.0,140.0]);
+	 let mut events = Events::new(EventSettings::new());
+    while let Some(e) = events.next(&mut window) {
+        if let Some(args) = e.render_args() {
+            app.render(&args,&tree);
+        }
+/*
+        if let Some(args) = e.update_args() {
+            app.update(&args,tree);
+        }*/
+    }
 }
