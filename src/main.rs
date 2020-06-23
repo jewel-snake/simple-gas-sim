@@ -27,8 +27,7 @@ impl App{
 				let crl = rectangle::square(i[0],i[1],3.0);
 				ellipse(RED,crl,c.transform,gl);
 			}
-			let s = &t;
-			while let gas_sim::Contents::Children(c) = s.content {
+			while let gas_sim::logic::Contents::Children(c) = &t.content {
 				
 			}
 		});
