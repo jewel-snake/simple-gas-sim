@@ -5,7 +5,6 @@ pub mod logic{
 	pub struct Dot{
 		pub x: f64,
 		pub y: f64,
-		//pub new: RefCell<bool>,
 	}
 
 	impl Copy for Dot {}
@@ -122,6 +121,113 @@ pub mod logic{
 					e.borrow_mut().push(*elem);
 					if self.overflowed() {
 						self.handle_overflow();
+					}
+				},
+			}
+		}
+	}
+}
+mod logic2{
+	use std::vec::Vec;
+	#[derive(Copy,Clone)]
+	struct Dot{
+		x: f64,
+		y: f64,
+	}
+
+	enum Contents{
+		Elements(Vec<Dot>),
+		Children([Box<Qtree>;4]),
+	}
+
+	struct Qtree{
+		x1: f64,
+		y1: f64,
+		x2: f64,
+		y2: f64,
+		content: Contents,
+	}
+
+	impl Qtree{
+		fn new(x1: f64, y1: f64, x2: f64, y2: f64) -> Qtree {
+			Qtree{
+				x1,
+				y1,
+				x2,
+				y2,
+				content: Contents::Elements(Vec::new()),
+			}
+		}
+		fn overflowed(&self) -> bool {
+			match &self.content {
+				Contents::Elements(e) => {
+					if e.len() > 5{
+						return true
+					}
+					return false
+				},
+				Contents::Children(_) => {
+					true
+				},
+			}
+		}
+		fn handle_overflow(&mut self) {
+			let elems = match &self.content {
+				Contents::Children(_) => panic!("Error! Contntent is already consists of nodes!"),
+				Contents::Elements(e) => e.clone(),
+			};
+			let wmiddle = (self.x2 + self.x1) / 2.0;
+			let hmiddle = (self.y2 + self.y1) / 2.0;
+			self.content = Contents::Children([
+				Box::new(Qtree::new(wmiddle,self.y1,self.x2,hmiddle)),
+				Box::new(Qtree::new(self.x1,self.y1,wmiddle,hmiddle)),
+				Box::new(Qtree::new(self.x1,hmiddle,wmiddle,self.y2)),
+				Box::new(Qtree::new(wmiddle,hmiddle,self.x2,self.y2)),
+			]);
+			match &mut self.content {
+				Contents::Children(c) => {
+					for elem in elems {
+						if elem.x > wmiddle {
+							if elem.y > hmiddle {
+								c[3].querry(elem);
+							}else{
+								c[0].querry(elem);
+							}
+						}else{
+							if elem.y > hmiddle {
+								c[2].querry(elem);
+							}else{
+								c[1].querry(elem);
+							}
+						}
+					}
+				},
+				Contents::Elements(_) => panic!("Error! Content is still a vector!"),
+			}
+		}
+		fn querry(&mut self, elem: Dot) {
+			match &mut self.content {
+				Contents::Elements(e) => {
+					e.push(elem);
+					if e.len() > 5 {
+						self.handle_overflow();
+					}
+				},
+				Contents::Children(c) => {
+					let wmiddle = (self.x2 + self.x1) / 2.0;
+					let hmiddle = (self.y2 + self.y1) / 2.0;
+					if elem.x > wmiddle {
+						if elem.y > hmiddle {
+							c[3].querry(elem);
+						}else{
+							c[0].querry(elem);
+						}
+					}else{
+						if elem.y > hmiddle {
+							c[2].querry(elem);
+						}else{
+							c[1].querry(elem);
+						}
 					}
 				},
 			}
