@@ -27,9 +27,13 @@ impl App{
 				let crl = rectangle::square(i[0],i[1],3.0);
 				ellipse(RED,crl,c.transform,gl);
 			}
-			while let gas_sim::logic::Contents::Children(c) = &t.content {
-				
-			}
+			/*while let gas_sim::logic::Contents::Children(c) = &t.content {
+				let f = |cont| {
+					for i in cont {
+
+					}
+				}; 
+			}*/
 		});
 	}
 	fn update(&mut self,args: &UpdateArgs,t: Qtree){}
